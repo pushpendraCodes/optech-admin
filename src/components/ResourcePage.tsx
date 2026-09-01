@@ -241,6 +241,14 @@ export function ResourcePage({
                   placeholder={f.type === "json" ? "{}" : undefined}
                   defaultValue={fieldValue(editRow, f.name)}
                 />
+              ) : f.type === "checkbox" ? (
+                <Input
+                  name={f.name}
+                  type="checkbox"
+                  value="on"
+                  defaultChecked={fieldValue(editRow, f.name) === "on"}
+                  className="h-4 w-4 accent-accent"
+                />
               ) : (
                 <Input
                   name={f.name}

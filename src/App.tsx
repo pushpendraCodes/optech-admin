@@ -34,6 +34,7 @@ const NoticesPage = lazy(() => import("@/features/pages").then((m) => ({ default
 const StaffPage = lazy(() => import("@/features/pages").then((m) => ({ default: m.StaffPage })));
 const AlumniPage = lazy(() => import("@/features/pages").then((m) => ({ default: m.AlumniPage })));
 const JobsPage = lazy(() => import("@/features/pages").then((m) => ({ default: m.JobsPage })));
+const VideosPage = lazy(() => import("@/features/pages").then((m) => ({ default: m.VideosPage })));
 const GalleryPage = lazy(() => import("@/features/pages").then((m) => ({ default: m.GalleryPage })));
 const CouponsPage = lazy(() => import("@/features/pages").then((m) => ({ default: m.CouponsPage })));
 const MarqueePage = lazy(() => import("@/features/pages").then((m) => ({ default: m.MarqueePage })));
@@ -108,6 +109,7 @@ function AppRoutes() {
         <Route path="/live" element={<RoutePage permission={ROUTE_PERMISSIONS["/live"]}><LivePage /></RoutePage>} />
         <Route path="/staff" element={<RoutePage permission={ROUTE_PERMISSIONS["/staff"]}><StaffPage /></RoutePage>} />
         <Route path="/alumni" element={<RoutePage permission={ROUTE_PERMISSIONS["/alumni"]}><AlumniPage /></RoutePage>} />
+        <Route path="/videos" element={<RoutePage permission={ROUTE_PERMISSIONS["/videos"]}><VideosPage /></RoutePage>} />
         <Route path="/jobs" element={<RoutePage permission={ROUTE_PERMISSIONS["/jobs"]}><JobsPage /></RoutePage>} />
         <Route path="/coupons" element={<RoutePage permission={ROUTE_PERMISSIONS["/coupons"]}><CouponsPage /></RoutePage>} />
         <Route path="/referrals" element={<RoutePage permission={ROUTE_PERMISSIONS["/referrals"]}><ReferralsPage /></RoutePage>} />

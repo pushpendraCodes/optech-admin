@@ -18,6 +18,7 @@ import {
   Shield,
   Users,
   Video,
+  PlayCircle,
 } from "lucide-react";
 
 export type NavItem = {
@@ -68,6 +69,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { to: "/live", icon: Video, label: "Live classes", permission: "live:write" },
       { to: "/staff", icon: Users, label: "Staff", permission: ["staff:write", "course:read"] },
       { to: "/alumni", icon: GraduationCap, label: "Alumni", permission: "cms:write" },
+      { to: "/videos", icon: PlayCircle, label: "Videos", permission: "cms:write" },
       { to: "/jobs", icon: Briefcase, label: "Jobs", permission: "job:write" },
     ],
   },

@@ -91,6 +91,34 @@ export function JobsPage() {
   );
 }
 
+export function VideosPage() {
+  return (
+    <ResourcePage
+      title="Videos"
+      description="YouTube lectures and highlights shown on the website under More → Videos."
+      resource="videos"
+      permission="cms:write"
+      allowDelete
+      columns={[
+        { key: "title", label: "Title" },
+        { key: "category", label: "Category" },
+        { key: "youtubeUrl", label: "YouTube link" },
+        { key: "published", label: "Published" },
+        { key: "featured", label: "Featured" },
+      ]}
+      fields={[
+        { name: "title", label: "Title" },
+        { name: "description", label: "Description", type: "textarea" },
+        { name: "youtubeUrl", label: "YouTube link" },
+        { name: "category", label: "Category (optional)" },
+        { name: "sortOrder", label: "Sort order", type: "number" },
+        { name: "featured", label: "Featured on videos page", type: "checkbox" },
+        { name: "published", label: "Published on website", type: "checkbox" },
+      ]}
+    />
+  );
+}
+
 export { GalleryPage } from "@/features/gallery/GalleryPage";
 
 export function CouponsPage() {
