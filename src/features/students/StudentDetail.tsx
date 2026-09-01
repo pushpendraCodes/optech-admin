@@ -282,7 +282,7 @@ export function StudentDetail() {
                             onClick={async () => {
                               try {
                                 await issueCertificate({ enrollmentId, studentId: id }).unwrap();
-                                toast("Certificate generated", "success");
+                                toast("Certificate generated", "ok");
                                 refetch();
                               } catch {
                                 toast("Could not generate certificate", "error");

@@ -174,7 +174,7 @@ export function EnrollmentsPage() {
           {rows.map((item) => {
             const payer = payerFromRow(item);
             const student = studentFromRow(item);
-            const payment = (item.payment as { amount?: number; mode?: string; createdAt?: string } | undefined) ?? item;
+            const payment = item.payment as { amount?: number; mode?: string; createdAt?: string } | undefined;
             const admitted = String(item.admissionStatus) === "admitted";
             return (
               <article key={String(item._id)} className="card flex flex-wrap items-center justify-between gap-3 p-4">
@@ -193,9 +193,9 @@ export function EnrollmentsPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="text-right text-sm">
-                    <p className="font-mono text-accent">{rupees(payment?.amount)}</p>
+                    <p className="font-mono text-accent">{rupees(Number(payment?.amount ?? item.amount ?? 0))}</p>
                     <p className="text-xs text-zinc-500">
-                      {payment?.mode ?? "online"} · {payment?.createdAt ? isoDate(String(payment.createdAt)) : ""}
+                      {String(payment?.mode ?? "online")} · {payment?.createdAt ? isoDate(String(payment.createdAt)) : item.createdAt ? isoDate(String(item.createdAt)) : "—"}
                     </p>
                   </div>
                   <StatusBadge value={admitted ? "admitted" : "pending"} />
