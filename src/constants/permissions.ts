@@ -1,0 +1,70 @@
+export const PERMISSIONS = [
+  "course:read",
+  "course:create",
+  "course:update",
+  "course:delete",
+  "student:read",
+  "student:create",
+  "student:update",
+  "student:block",
+  "attendance:read",
+  "attendance:write",
+  "attendance:update",
+  "payment:read",
+  "payment:refund",
+  "payment:write",
+  "notification:create",
+  "notification:broadcast",
+  "admin:manage",
+  "admission:read",
+  "admission:write",
+  "quiz:read",
+  "quiz:write",
+  "notes:write",
+  "cms:write",
+  "staff:write",
+  "gallery:write",
+  "job:write",
+  "scholarship:write",
+  "coupon:write",
+  "live:write",
+  "notice:write",
+  "translation:write",
+  "audit:read",
+  "role:manage",
+  "fee:write",
+] as const;
+
+export type Permission = (typeof PERMISSIONS)[number];
+
+/** Menu-aligned groups — only permissions that map to console tabs / APIs */
+export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
+  {
+    label: "Courses & batches",
+    keys: ["course:read", "course:create", "course:update", "course:delete"],
+  },
+  {
+    label: "Students & enrollments",
+    keys: ["student:read", "student:update", "student:block"],
+  },
+  { label: "Admissions", keys: ["admission:read", "admission:write"] },
+  { label: "Attendance", keys: ["attendance:read", "attendance:write"] },
+  { label: "Fees & referrals", keys: ["payment:read", "payment:write"] },
+  { label: "Quizzes & typing", keys: ["quiz:read", "quiz:write"] },
+  { label: "Scholarship exams", keys: ["scholarship:write"] },
+  { label: "Notes", keys: ["notes:write"] },
+  { label: "Gallery", keys: ["gallery:write"] },
+  { label: "Notices", keys: ["notice:write"] },
+  { label: "Live classes", keys: ["live:write"] },
+  { label: "Staff profiles", keys: ["staff:write"] },
+  { label: "Alumni · marquee · ads · popups · links", keys: ["cms:write"] },
+  { label: "Jobs", keys: ["job:write"] },
+  { label: "Coupons", keys: ["coupon:write"] },
+  { label: "Notifications", keys: ["notification:create", "notification:broadcast"] },
+  { label: "Roles & console users", keys: ["role:manage"] },
+  { label: "Settings", keys: ["admin:manage"] },
+  { label: "Audit logs", keys: ["audit:read"] },
+];
+
+/** Flat list used on the roles matrix (deduped, menu-relevant only) */
+export const MENU_PERMISSIONS = [...new Set(PERMISSION_GROUPS.flatMap((g) => g.keys))];
