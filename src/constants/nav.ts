@@ -6,6 +6,7 @@ import {
   CalendarCheck,
   ClipboardList,
   CreditCard,
+  FileSpreadsheet,
   Gauge,
   GraduationCap,
   IdCard,
@@ -48,6 +49,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { to: "/admissions", icon: GraduationCap, label: "Admissions", permission: "admission:read" },
       { to: "/enquiries", icon: MessageSquare, label: "Enquiries", permission: "admission:read" },
       { to: "/enrollments", icon: GraduationCap, label: "Website enrollments", permission: "student:read" },
+      { to: "/external-data", icon: FileSpreadsheet, label: "External data", permission: "admission:read" },
       { to: "/attendance", icon: CalendarCheck, label: "Attendance", permission: "attendance:read" },
       { to: "/fees", icon: CreditCard, label: "Fees", permission: "payment:read" },
     ],
@@ -56,6 +58,7 @@ export const ADMIN_NAV: NavGroup[] = [
     label: "Examinations",
     items: [
       { to: "/quizzes", icon: Gauge, label: "Quizzes", permission: "quiz:read" },
+      { to: "/exams", icon: ClipboardList, label: "Exams", permission: "quiz:read" },
       { to: "/typing", icon: Keyboard, label: "Typing tests", permission: "quiz:read" },
       { to: "/scholarships", icon: Shield, label: "Scholarship exams", permission: "scholarship:write" },
     ],

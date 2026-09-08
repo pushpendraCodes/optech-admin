@@ -17,6 +17,7 @@ const schema = z.object({
   batchYear: z.string().min(2, "Batch year is required"),
   role: z.string().optional(),
   story: z.string().optional(),
+  youtubeUrl: z.string().optional(),
   featured: z.boolean().optional(),
   published: z.boolean().optional(),
 });
@@ -54,7 +55,7 @@ export function AlumniPage() {
     setEditRow(null);
     setPhoto(null);
     setFormError(null);
-    form.reset({ name: "", batchYear: "", role: "", story: "", featured: false, published: true });
+    form.reset({ name: "", batchYear: "", role: "", story: "", youtubeUrl: "", featured: false, published: true });
     setOpen(true);
   }
 
@@ -67,6 +68,7 @@ export function AlumniPage() {
       batchYear: String(row.batchYear ?? ""),
       role: String(row.role ?? ""),
       story: String(row.story ?? ""),
+      youtubeUrl: String(row.youtubeUrl ?? ""),
       featured: Boolean(row.featured),
       published: row.published !== false,
     });
@@ -86,6 +88,7 @@ export function AlumniPage() {
     }
     const body = {
       ...values,
+      youtubeUrl: values.youtubeUrl?.trim() || undefined,
       photo: photo ?? editRow?.photo,
       featured: Boolean(values.featured),
       published: values.published !== false,
@@ -110,7 +113,7 @@ export function AlumniPage() {
     <div>
       <PageHeader
         title="Alumni"
-        description="Graduate stories on the public alumni page — photo, batch, role, and story."
+        description="Graduate stories on the public alumni page — photo, batch, role, story, and optional YouTube video."
         actions={canWrite ? <Button type="button" onClick={openCreate}>New alumni</Button> : null}
       />
 
@@ -224,13 +227,16 @@ export function AlumniPage() {
           <Field label="Story">
             <Textarea rows={4} {...form.register("story")} />
           </Field>
+          <Field label="YouTube video link (optional)">
+            <Input placeholder="https://www.youtube.com/watch?v=… or youtu.be/…" {...form.register("youtubeUrl")} />
+          </Field>
 
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" {...form.register("featured")} className="accent-[#d4a22f]" />
+            <input type="checkbox" {...form.register("featured")} className="accent-accent" />
             Featured story
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" {...form.register("published")} className="accent-[#d4a22f]" />
+            <input type="checkbox" {...form.register("published")} className="accent-accent" />
             Published on website
           </label>
 

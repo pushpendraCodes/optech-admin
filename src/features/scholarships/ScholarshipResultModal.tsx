@@ -51,7 +51,7 @@ function ScoreRing({ percent }: { percent: number }) {
           cy="60"
           r={r}
           fill="none"
-          stroke="#d4a22f"
+          stroke="#5b8cff"
           strokeWidth="10"
           strokeLinecap="round"
           strokeDasharray={c}

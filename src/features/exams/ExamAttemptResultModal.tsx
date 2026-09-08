@@ -1,8 +1,13 @@
+import { useEffect, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { StatusBadge } from "@/components/Chrome";
+import { Button } from "@/components/Button";
+import { toast } from "@/components/Toast";
+import { useDownloadCertificatePdfMutation, useIssueCertificateMutation } from "@/app/api";
+import { downloadBlob } from "@/utils/downloadBlob";
 import { isoDate, loc } from "@/utils/format";
 
-export type QuizAttemptRow = {
+export type ExamAttemptRow = {
   _id?: string;
   status?: string;
   score?: number;
@@ -14,13 +19,20 @@ export type QuizAttemptRow = {
   startedAt?: string;
   submittedAt?: string;
   createdAt?: string;
+  enrollmentId?: string | null;
+  certificate?: {
+    certificateNumber?: string;
+    issuedAt?: string;
+    status?: string;
+  } | null;
   student?: {
+    _id?: string;
     studentCode?: string;
     rollNumber?: string;
     user?: { name?: string; email?: string; phone?: string };
     batch?: { label?: string; timing?: string };
   };
-  quiz?: {
+  exam?: {
     title?: string;
     passing?: number;
     minutes?: number;
@@ -28,7 +40,7 @@ export type QuizAttemptRow = {
     negativeValue?: number;
     totalMarks?: number;
     subject?: string;
-    course?: { title?: unknown };
+    course?: { _id?: string; title?: unknown };
   };
 };
 
@@ -46,10 +58,10 @@ function formatDateTime(value?: string) {
   return d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
 }
 
-function estimateMax(row: QuizAttemptRow) {
+function estimateMax(row: ExamAttemptRow) {
   const score = Number(row.score ?? 0);
   const percent = Number(row.percent ?? 0);
-  const quizMax = Number(row.quiz?.totalMarks ?? 0);
+  const quizMax = Number(row.exam?.totalMarks ?? 0);
   if (quizMax > 0) return quizMax;
   if (percent > 0) return Math.round((score / percent) * 100);
   return score || 0;
@@ -164,19 +176,33 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-function studentName(row: QuizAttemptRow) {
+function studentName(row: ExamAttemptRow) {
   return row.student?.user?.name || row.student?.studentCode || "—";
 }
 
-export function QuizAttemptResultModal({
+export function ExamAttemptResultModal({
   open,
   row,
   onClose,
+  onCertificateIssued,
 }: {
   open: boolean;
-  row: QuizAttemptRow | null;
+  row: ExamAttemptRow | null;
   onClose: () => void;
+  onCertificateIssued?: (payload: {
+    attemptId: string;
+    enrollmentId: string;
+    certificate: { certificateNumber?: string; issuedAt?: string; status?: string };
+  }) => void;
 }) {
+  const [issueCertificate, issueState] = useIssueCertificateMutation();
+  const [downloadCertificate, downloadState] = useDownloadCertificatePdfMutation();
+  const [localCert, setLocalCert] = useState<ExamAttemptRow["certificate"]>(null);
+
+  useEffect(() => {
+    setLocalCert(null);
+  }, [row?._id]);
+
   if (!row) return null;
 
   const inProgress = row.status === "in_progress";
@@ -186,18 +212,55 @@ export function QuizAttemptResultModal({
   const skipped = Number(row.skipped ?? 0);
   const score = Number(row.score ?? 0);
   const max = estimateMax(row);
-  const passing = Number(row.quiz?.passing ?? 0);
+  const passing = Number(row.exam?.passing ?? 0);
   const passed = !inProgress && percent >= passing;
+  const enrollmentId = row.enrollmentId ? String(row.enrollmentId) : "";
+  const studentId = row.student?._id ? String(row.student._id) : "";
+  const certificate = localCert ?? row.certificate;
+  const busy = issueState.isLoading || downloadState.isLoading;
+
+  async function handleGenerate() {
+    if (!enrollmentId || !studentId) {
+      toast("No active course enrollment found for this student", "error");
+      return;
+    }
+    try {
+      const res = await issueCertificate({ enrollmentId, studentId }).unwrap();
+      const cert = {
+        certificateNumber: String(res.data?.certificateNumber ?? ""),
+        issuedAt: res.data?.issuedAt ? String(res.data.issuedAt) : new Date().toISOString(),
+        status: String(res.data?.status ?? "issued"),
+      };
+      setLocalCert(cert);
+      onCertificateIssued?.({ attemptId: String(row!._id), enrollmentId, certificate: cert });
+      toast("Certificate generated", "ok");
+    } catch {
+      toast("Could not generate certificate", "error");
+    }
+  }
+
+  async function handleDownload() {
+    if (!enrollmentId) return;
+    try {
+      const blob = await downloadCertificate(enrollmentId).unwrap();
+      downloadBlob(
+        blob,
+        `${row!.student?.studentCode ?? "student"}-${enrollmentId.slice(-6)}-certificate.pdf`,
+      );
+    } catch {
+      toast("Certificate download failed", "error");
+    }
+  }
 
   return (
-    <Modal open={open} title="Quiz attempt result" onClose={onClose}>
+    <Modal open={open} title="Exam attempt result" onClose={onClose}>
       <div className="max-h-[75vh] space-y-5 overflow-y-auto pr-1">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-sans text-lg font-semibold">{studentName(row)}</p>
-            <p className="text-sm text-zinc-400">{row.quiz?.title ?? "Mock test"}</p>
-            {row.quiz?.course ? (
-              <p className="mt-1 text-xs text-zinc-500">{loc(row.quiz.course.title)}</p>
+            <p className="text-sm text-zinc-400">{row.exam?.title ?? "Exam"}</p>
+            {row.exam?.course ? (
+              <p className="mt-1 text-xs text-zinc-500">{loc(row.exam.course.title)}</p>
             ) : null}
           </div>
           <StatusBadge value={inProgress ? "in progress" : passed ? "passed" : "failed"} />
@@ -232,7 +295,7 @@ export function QuizAttemptResultModal({
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
                   <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500">Duration</p>
-                  <p className="mt-1 font-sans text-xl font-semibold">{row.quiz?.minutes ?? "—"} min</p>
+                  <p className="mt-1 font-sans text-xl font-semibold">{row.exam?.minutes ?? "—"} min</p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
                   <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500">Correct</p>
@@ -249,6 +312,38 @@ export function QuizAttemptResultModal({
               <p className="mb-3 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">Answer breakdown</p>
               <BreakdownChart correct={correct} wrong={wrong} skipped={skipped} />
             </div>
+
+            {passed ? (
+              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-emerald-300">Certificate</p>
+                {certificate ? (
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-zinc-200">
+                        Issued{certificate.issuedAt ? ` · ${isoDate(String(certificate.issuedAt))}` : ""}
+                      </p>
+                      {certificate.certificateNumber ? (
+                        <p className="mt-1 font-mono text-xs text-zinc-500">{certificate.certificateNumber}</p>
+                      ) : null}
+                    </div>
+                    <Button type="button" variant="ghost" disabled={busy || !enrollmentId} onClick={() => void handleDownload()}>
+                      {downloadState.isLoading ? "Downloading…" : "Download PDF"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-zinc-400">
+                      {enrollmentId
+                        ? "Student passed. Generate a course certificate for their enrollment."
+                        : "Student passed, but no matching course enrollment was found."}
+                    </p>
+                    <Button type="button" disabled={busy || !enrollmentId || !studentId} onClick={() => void handleGenerate()}>
+                      {issueState.isLoading ? "Generating…" : "Generate certificate"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : null}
           </>
         )}
 
@@ -272,12 +367,12 @@ export function QuizAttemptResultModal({
         </div>
 
         <div className="rounded-xl border border-white/10 p-4">
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">Quiz details</p>
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">Exam details</p>
           <dl className="text-sm">
-            <DetailRow label="Test" value={row.quiz?.title ?? "—"} />
-            <DetailRow label="Course" value={row.quiz?.course ? loc(row.quiz.course.title) : "—"} />
-            <DetailRow label="Subject" value={row.quiz?.subject || "—"} />
-            <DetailRow label="Negative marking" value={row.quiz?.negative ? `Yes (${row.quiz.negativeValue ?? 0})` : "No"} />
+            <DetailRow label="Test" value={row.exam?.title ?? "—"} />
+            <DetailRow label="Course" value={row.exam?.course ? loc(row.exam.course.title) : "—"} />
+            <DetailRow label="Subject" value={row.exam?.subject || "—"} />
+            <DetailRow label="Negative marking" value={row.exam?.negative ? `Yes (${row.exam.negativeValue ?? 0})` : "No"} />
             <DetailRow label="Status" value={String(row.status ?? "—").replace(/_/g, " ")} />
             <DetailRow label="Started" value={formatDateTime(row.startedAt ? String(row.startedAt) : undefined)} />
             <DetailRow label="Submitted" value={formatDateTime(row.submittedAt ? String(row.submittedAt) : undefined)} />

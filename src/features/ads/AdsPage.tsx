@@ -6,8 +6,16 @@ import { PageHeader, EmptyState, Skeleton, StatusBadge } from "@/components/Chro
 import { Button } from "@/components/Button";
 import { Field, Input, Select, Textarea } from "@/components/Field";
 import { ConfirmDialog, Modal } from "@/components/Modal";
-import { PhotoUploadField, photoUrl, type PhotoAsset } from "@/components/StudentPhoto";
-import { useCreateMutation, useListQuery, usePatchMutation, useRemoveMutation } from "@/app/api";
+import { photoUrl, type PhotoAsset } from "@/components/StudentPhoto";
+import { AdMediaField, isAdVideo } from "@/features/ads/AdMediaField";
+import {
+  useCreateMutation,
+  useListQuery,
+  usePatchMutation,
+  useRemoveMutation,
+  useSaveWebsiteSettingsMutation,
+  useWebsiteSettingsQuery,
+} from "@/app/api";
 import { toast } from "@/components/Toast";
 import { useCan } from "@/hooks/useAuth";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -17,12 +25,21 @@ const schema = z.object({
   body: z.string().optional(),
   href: z.string().optional(),
   cta: z.string().optional(),
-  slot: z.enum(["home-between", "side"]),
+  slot: z.enum(["box1", "box2"]),
   active: z.boolean().optional(),
   sortOrder: z.coerce.number().optional(),
 });
 
 type Form = z.infer<typeof schema>;
+
+function normalizeSlot(slot: unknown): "box1" | "box2" {
+  if (slot === "box2" || slot === "side") return "box2";
+  return "box1";
+}
+
+function slotLabel(slot: unknown) {
+  return normalizeSlot(slot) === "box2" ? "Box 2" : "Box 1";
+}
 
 export function AdsPage() {
   const canWrite = useCan("cms:write");
@@ -42,34 +59,49 @@ export function AdsPage() {
     limit: 20,
     extra: { kind: "ad" },
   });
+  const { data: settingsData, refetch: refetchSettings } = useWebsiteSettingsQuery(undefined, {
+    skip: !canWrite,
+  });
+  const [saveSettings, saveSettingsState] = useSaveWebsiteSettingsMutation();
   const [create, createState] = useCreateMutation();
   const [patch, patchState] = usePatchMutation();
   const [remove, removeState] = useRemoveMutation();
   const form = useForm<Form>({
     resolver: zodResolver(schema),
-    defaultValues: { slot: "home-between", active: true, sortOrder: 0, cta: "View" },
+    defaultValues: { slot: "box1", active: true, sortOrder: 0, cta: "View" },
   });
   const slot = form.watch("slot");
   const bannerSpec =
-    slot === "side"
+    slot === "box2"
       ? {
-          sizeGuide: "600 × 500 px (2× of 300 × 250 display)",
-          previewAspect: "6 / 5",
-          hint: "Sidebar ad panel is 300×250 on the site. Upload 600×500 for sharp retina display. Keep important content inside the center safe area.",
+          sizeGuide: "600 × 500 px · Box 2",
+          hint: "Box 2 sits on the homepage ad row. Image or video (max 100 MB).",
         }
       : {
-          sizeGuide: "1200 × 500 px (landscape 12:5)",
-          previewAspect: "12 / 5",
-          hint: "Homepage banner image panel is wide landscape (~588×240 on desktop). Upload 1200×500 so the full banner fits without cropping.",
+          sizeGuide: "600 × 500 px · Box 1",
+          hint: "Box 1 sits on the homepage ad row. Image or video (max 100 MB).",
         };
   const rows = data?.data ?? [];
   const meta = data?.meta;
+  const site = settingsData?.data as Record<string, unknown> | undefined;
+  const box1On = site?.adBox1Enabled !== false;
+  const box2On = site?.adBox2Enabled !== false;
+
+  async function toggleBox(box: "adBox1Enabled" | "adBox2Enabled", next: boolean) {
+    try {
+      await saveSettings({ [box]: next }).unwrap();
+      toast(next ? `${box === "adBox1Enabled" ? "Box 1" : "Box 2"} visible on website` : `${box === "adBox1Enabled" ? "Box 1" : "Box 2"} hidden on website`);
+      refetchSettings();
+    } catch {
+      toast("Could not update box visibility", "error");
+    }
+  }
 
   function openCreate() {
     setEditRow(null);
     setImage(null);
     setFormError(null);
-    form.reset({ title: "", body: "", href: "", cta: "View", slot: "home-between", active: true, sortOrder: 0 });
+    form.reset({ title: "", body: "", href: "", cta: "View", slot: "box1", active: true, sortOrder: 0 });
     setOpen(true);
   }
 
@@ -82,7 +114,7 @@ export function AdsPage() {
       body: String(row.body ?? ""),
       href: String(row.href ?? ""),
       cta: String(row.cta ?? "View"),
-      slot: row.slot === "side" ? "side" : "home-between",
+      slot: normalizeSlot(row.slot),
       active: row.active !== false,
       sortOrder: Number(row.sortOrder ?? 0),
     });
@@ -97,7 +129,7 @@ export function AdsPage() {
   async function save(values: Form) {
     setFormError(null);
     if (!image?.url && !photoUrl(editRow?.image)) {
-      setFormError("Upload an ad banner image.");
+      setFormError("Upload an ad image or video.");
       return;
     }
     const body = {
@@ -131,9 +163,43 @@ export function AdsPage() {
     <div>
       <PageHeader
         title="Advertisements"
-        description="Homepage and sidebar banners. Upload a banner image for each ad."
+        description="Two homepage boxes (Box 1 & Box 2). Upload image or video per ad, assign a box, and turn each box on/off for the website."
         actions={canWrite ? <Button type="button" onClick={openCreate}>New ad</Button> : null}
       />
+
+      <div className="card mb-4 grid gap-4 p-4 sm:grid-cols-2">
+        <label className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <span>
+            <span className="block font-sans text-sm font-medium text-foreground">Show Box 1 on website</span>
+            <span className="mt-1 block text-xs text-zinc-500">When off, Box 1 stays hidden even if ads are active.</span>
+          </span>
+          <input
+            type="checkbox"
+            className="mt-1 accent-accent"
+            checked={box1On}
+            disabled={!canWrite || saveSettingsState.isLoading}
+            onChange={(e) => void toggleBox("adBox1Enabled", e.target.checked)}
+          />
+        </label>
+        <label className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <span>
+            <span className="block font-sans text-sm font-medium text-foreground">Show Box 2 on website</span>
+            <span className="mt-1 block text-xs text-zinc-500">When off, Box 2 stays hidden even if ads are active.</span>
+          </span>
+          <input
+            type="checkbox"
+            className="mt-1 accent-accent"
+            checked={box2On}
+            disabled={!canWrite || saveSettingsState.isLoading}
+            onChange={(e) => void toggleBox("adBox2Enabled", e.target.checked)}
+          />
+        </label>
+        {!canWrite ? (
+          <p className="text-xs text-zinc-500 sm:col-span-2">
+            You need CMS write permission to toggle box visibility.
+          </p>
+        ) : null}
+      </div>
 
       <div className="mb-4">
         <Field label="Search">
@@ -153,15 +219,15 @@ export function AdsPage() {
       ) : isError ? (
         <EmptyState title="Could not load ads" body="Retry after the API is up." action={<Button onClick={() => refetch()}>Retry</Button>} />
       ) : rows.length === 0 ? (
-        <EmptyState title="No advertisements" body="Create a banner ad with an uploaded image." />
+        <EmptyState title="No advertisements" body="Create an ad with an image or video for Box 1 or Box 2." />
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full min-w-[860px] text-sm">
             <thead className="border-b border-white/8 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">
               <tr>
-                <th className="px-4 py-3 text-left">Banner</th>
+                <th className="px-4 py-3 text-left">Media</th>
                 <th className="px-4 py-3 text-left">Title</th>
-                <th className="px-4 py-3 text-left">Slot</th>
+                <th className="px-4 py-3 text-left">Box</th>
                 <th className="px-4 py-3 text-left">Link</th>
                 <th className="px-4 py-3 text-left">Active</th>
                 <th className="px-4 py-3 text-left">Actions</th>
@@ -169,18 +235,30 @@ export function AdsPage() {
             </thead>
             <tbody>
               {rows.map((row) => {
-                const url = photoUrl(row.image);
+                const media = (row.image as PhotoAsset | undefined) ?? null;
+                const url = photoUrl(media);
+                const video = isAdVideo(media);
                 return (
                   <tr key={String(row._id)} className="border-b border-white/5">
                     <td className="px-4 py-3">
                       {url ? (
-                        <img src={url} alt="" className="h-12 w-20 rounded border border-white/10 object-cover" />
+                        video ? (
+                          <video
+                            src={url}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            className="h-12 w-20 rounded border border-white/10 object-cover"
+                          />
+                        ) : (
+                          <img src={url} alt="" className="h-12 w-20 rounded border border-white/10 object-cover" />
+                        )
                       ) : (
-                        <span className="text-xs text-zinc-500">No image</span>
+                        <span className="text-xs text-zinc-500">No media</span>
                       )}
                     </td>
                     <td className="px-4 py-3 font-medium">{String(row.title)}</td>
-                    <td className="px-4 py-3 text-zinc-400">{String(row.slot ?? "home-between")}</td>
+                    <td className="px-4 py-3 text-zinc-400">{slotLabel(row.slot)}</td>
                     <td className="max-w-[200px] truncate px-4 py-3 text-xs text-zinc-500">{String(row.href ?? "—")}</td>
                     <td className="px-4 py-3"><StatusBadge value={row.active !== false ? "active" : "inactive"} /></td>
                     <td className="px-4 py-3">
@@ -221,22 +299,18 @@ export function AdsPage() {
         >
           {formError ? <p className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">{formError}</p> : null}
 
-          <Field label="Placement">
+          <Field label="Advertisement box">
             <Select {...form.register("slot")}>
-              <option value="home-between">Homepage banner</option>
-              <option value="side">Sidebar ad</option>
+              <option value="box1">Box 1</option>
+              <option value="box2">Box 2</option>
             </Select>
           </Field>
 
-          <PhotoUploadField
-            label="Banner image"
+          <AdMediaField
             value={image}
             onChange={setImage}
-            folder="optech/ads"
             sizeGuide={bannerSpec.sizeGuide}
-            previewAspect={bannerSpec.previewAspect}
             hint={bannerSpec.hint}
-            buttonLabel="banner"
           />
 
           <Field label="Title" error={form.formState.errors.title?.message}>
@@ -255,8 +329,8 @@ export function AdsPage() {
             <Input type="number" {...form.register("sortOrder")} />
           </Field>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" {...form.register("active")} className="accent-[#d4a22f]" />
-            Active on website
+            <input type="checkbox" {...form.register("active")} className="accent-accent" />
+            Active (this ad can appear in its box)
           </label>
 
           <Button type="submit" disabled={createState.isLoading || patchState.isLoading}>
@@ -268,7 +342,7 @@ export function AdsPage() {
       <ConfirmDialog
         open={Boolean(removeId)}
         title="Delete advertisement?"
-        body="This removes the banner from the public site."
+        body="This removes the ad from the public site."
         busy={removeState.isLoading}
         onConfirm={async () => {
           if (!removeId) return;

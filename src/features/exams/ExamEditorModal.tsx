@@ -83,19 +83,19 @@ function bankRowToQuestion(row: Record<string, unknown>): QuizQuestion {
   };
 }
 
-export function QuizEditorModal({
+export function ExamEditorModal({
   open,
-  quizId,
+  examId,
   onClose,
   onSaved,
 }: {
   open: boolean;
-  quizId: string | null;
+  examId: string | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const courses = useListQuery({ resource: "courses", page: 1, limit: 100 });
-  const detail = useGetByIdQuery({ resource: "quizzes", id: quizId ?? "" }, { skip: !quizId });
+  const detail = useGetByIdQuery({ resource: "exams", id: examId ?? "" }, { skip: !examId });
   const [create, createState] = useCreateMutation();
   const [patch, patchState] = usePatchMutation();
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -125,7 +125,7 @@ export function QuizEditorModal({
   useEffect(() => {
     if (!open) return;
     setFormError(null);
-    if (quizId && detail.data?.data) {
+    if (examId && detail.data?.data) {
       const row = detail.data.data;
       metaForm.reset({
         title: String(row.title ?? ""),
@@ -138,13 +138,13 @@ export function QuizEditorModal({
         negativeValue: Number(row.negativeValue ?? 0.25),
       });
       setQuestions(Array.isArray(row.questions) ? (row.questions as QuizQuestion[]) : []);
-    } else if (!quizId) {
+    } else if (!examId) {
       metaForm.reset({ minutes: 30, passing: 40, negative: false, negativeValue: 0.25, title: "", course: "", description: "", subject: "" });
       setQuestions([]);
     }
     setSelectedBank([]);
     setTab("manual");
-  }, [open, quizId, detail.data, metaForm]);
+  }, [open, examId, detail.data, metaForm]);
 
   useEffect(() => {
     setSelectedBank([]);
@@ -163,12 +163,12 @@ export function QuizEditorModal({
     }
     const body = { ...values, open: false, questions };
     try {
-      if (quizId) {
-        await patch({ resource: "quizzes", id: quizId, body }).unwrap();
-        toast("Mock test updated");
+      if (examId) {
+        await patch({ resource: "exams", id: examId, body }).unwrap();
+        toast("Exam updated");
       } else {
-        await create({ resource: "quizzes", body }).unwrap();
-        toast("Mock test created");
+        await create({ resource: "exams", body }).unwrap();
+        toast("Exam created");
       }
       onSaved();
       onClose();
@@ -195,7 +195,7 @@ export function QuizEditorModal({
   }
 
   return (
-    <Modal open={open} title={quizId ? "Edit mock test" : "New mock test"} onClose={onClose}>
+    <Modal open={open} title={examId ? "Edit exam" : "New exam"} onClose={onClose}>
       <form
         className="grid max-h-[78vh] gap-4 overflow-y-auto pr-1"
         noValidate
@@ -338,7 +338,7 @@ export function QuizEditorModal({
         </div>
 
         <Button type="submit" disabled={saving}>
-          {saving ? "Saving…" : quizId ? "Update test" : "Create test"}
+          {saving ? "Saving…" : examId ? "Update test" : "Create test"}
         </Button>
       </form>
     </Modal>

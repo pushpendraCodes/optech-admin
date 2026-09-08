@@ -104,7 +104,7 @@ function ToastCard({
       <button
         type="button"
         onClick={openLink}
-        className="flex w-80 cursor-pointer items-start gap-3 rounded-2xl border border-accent/30 bg-black/90 p-4 text-left shadow-2xl backdrop-blur-xl transition-colors hover:border-accent/50"
+        className="flex w-80 cursor-pointer items-start gap-3 rounded-2xl border border-accent/30 bg-[#101028]/95 p-4 text-left shadow-2xl backdrop-blur-xl transition-colors hover:border-accent/50"
       >
         {inner}
       </button>
@@ -112,7 +112,7 @@ function ToastCard({
   }
 
   return (
-    <div className="flex w-80 items-start gap-3 rounded-2xl border border-accent/30 bg-black/90 p-4 shadow-2xl backdrop-blur-xl">
+    <div className="flex w-80 items-start gap-3 rounded-2xl border border-accent/30 bg-[#101028]/95 p-4 shadow-2xl backdrop-blur-xl">
       {inner}
     </div>
   );

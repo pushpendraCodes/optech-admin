@@ -1,14 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0b;
-  --foreground: #e8e8ea;
-  --muted: #71717a;
-  --surface: #121214;
-  --card: rgba(24, 24, 27, 0.72);
-  --border: rgba(255, 255, 255, 0.08);
-  --accent: #d4a22f;
-  --accent-soft: rgba(212, 162, 47, 0.14);
+  --background: #06060e;
+  --foreground: #eef0f8;
+  --muted: #8b90a5;
+  --surface: #12122a;
+  --card: rgba(18, 18, 42, 0.88);
+  --border: rgba(140, 150, 255, 0.14);
+  --accent: #5b8cff;
+  --accent-soft: rgba(91, 140, 255, 0.18);
+  --brand-from: #ff1f3d;
+  --brand-mid: #8b2cff;
+  --brand-to: #1a5cff;
+  --brand-gradient: linear-gradient(90deg, var(--brand-from), var(--brand-mid), var(--brand-to));
+  --brand-gradient-soft: linear-gradient(
+    135deg,
+    rgba(255, 31, 61, 0.22),
+    rgba(139, 44, 255, 0.14),
+    rgba(26, 92, 255, 0.22)
+  );
   --success: #34d399;
   --warning: #fbbf24;
   --danger: #ef4444;
@@ -40,18 +50,109 @@ body,
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(90% 55% at 0% 0%, rgba(255, 31, 61, 0.2) 0%, transparent 55%),
+    radial-gradient(80% 50% at 100% 0%, rgba(26, 92, 255, 0.24) 0%, transparent 50%),
+    radial-gradient(60% 40% at 50% 100%, rgba(139, 44, 255, 0.12) 0%, transparent 55%),
+    var(--background);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgba(91, 140, 255, 0.35);
+  color: #fff;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(91, 140, 255, 0.45) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--brand-from), var(--brand-to));
+  border-radius: 999px;
 }
 
 .card {
-  background: var(--card);
+  background:
+    linear-gradient(180deg, rgba(255, 31, 61, 0.06), transparent 28%, rgba(26, 92, 255, 0.07)),
+    var(--card);
   border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 12px 40px rgba(8, 8, 24, 0.35);
+}
+
+.brand-gradient {
+  background-image: var(--brand-gradient);
+}
+
+.brand-gradient-text {
+  background-image: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.login-shell {
+  background:
+    radial-gradient(80% 60% at 10% 0%, rgba(255, 31, 61, 0.34) 0%, transparent 55%),
+    radial-gradient(70% 50% at 90% 20%, rgba(26, 92, 255, 0.38) 0%, transparent 50%),
+    linear-gradient(135deg, rgba(255, 31, 61, 0.2), transparent 40%, rgba(26, 92, 255, 0.24)),
+    var(--background);
+}
+
+.admin-shell {
+  background:
+    radial-gradient(70% 45% at 0% 0%, rgba(255, 31, 61, 0.18) 0%, transparent 55%),
+    radial-gradient(60% 40% at 100% 0%, rgba(26, 92, 255, 0.2) 0%, transparent 50%),
+    radial-gradient(50% 35% at 70% 100%, rgba(139, 44, 255, 0.12) 0%, transparent 55%),
+    var(--background);
+}
+
+.admin-header-bar {
+  background:
+    linear-gradient(90deg, rgba(255, 31, 61, 0.28), rgba(139, 44, 255, 0.18), rgba(26, 92, 255, 0.28)),
+    rgba(6, 6, 16, 0.72);
+}
+
+.admin-sidebar {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 31, 61, 0.32) 0%,
+      rgba(139, 44, 255, 0.22) 48%,
+      rgba(26, 92, 255, 0.34) 100%
+    ),
+    #080814;
+}
+
+.admin-main {
+  background:
+    linear-gradient(180deg, rgba(255, 31, 61, 0.04), transparent 18%, rgba(26, 92, 255, 0.05)),
+    transparent;
+}
+
+.field-control {
+  background: rgba(10, 10, 28, 0.92);
+  border-color: rgba(140, 150, 255, 0.16);
+}
+
+.field-control:focus,
+.field-control:focus-visible {
+  border-color: rgba(91, 140, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.18);
 }
 
 .id-card {
   background:
-    linear-gradient(180deg, rgba(212, 162, 47, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(255, 31, 61, 0.12), transparent 30%, rgba(26, 92, 255, 0.14)),
     var(--card);
 }
 

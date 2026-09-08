@@ -72,6 +72,23 @@ export const api = createApi({
     logout: build.mutation<ApiSuccess<unknown>, void>({
       query: () => ({ url: "/auth/logout", method: "POST" }),
     }),
+    getMe: build.query<
+      ApiSuccess<{ id: string; name: string; email: string; kind: string; roles: string[] }>,
+      void
+    >({
+      query: () => "/auth/me",
+      providesTags: ["Auth"],
+    }),
+    updateAccount: build.mutation<
+      ApiSuccess<{
+        passwordChanged: boolean;
+        user: { id: string; name: string; email: string; kind: string; roles: string[] };
+      }>,
+      { currentPassword: string; email?: string; newPassword?: string }
+    >({
+      query: (body) => ({ url: "/auth/account", method: "PATCH", body }),
+      invalidatesTags: ["Auth"],
+    }),
     dashboard: build.query<ApiSuccess<Record<string, number>>, void>({
       query: () => "/admin/dashboard",
       providesTags: ["Dashboard"],
@@ -112,7 +129,10 @@ export const api = createApi({
       query: ({ path, body, method = "POST" }) => ({ url: `/admin/${path}`, method, body }),
       invalidatesTags: ["List", "Dashboard", "Student"],
     }),
-    upload: build.mutation<ApiSuccess<{ url?: string; publicId?: string }>, { file: File; folder?: string }>({
+    upload: build.mutation<
+      ApiSuccess<{ url?: string; publicId?: string; resourceType?: string; format?: string; bytes?: number }>,
+      { file: File; folder?: string }
+    >({
       query: ({ file, folder }) => {
         const body = new FormData();
         body.append("file", file);
@@ -126,9 +146,30 @@ export const api = createApi({
     }),
     saveWebsiteSettings: build.mutation<
       ApiSuccess<Record<string, unknown>>,
-      { name: string; email: string; mobile: string; address: string; logo?: Record<string, unknown> | null }
+      {
+        name?: string;
+        email?: string;
+        mobile?: string;
+        address?: string;
+        logo?: Record<string, unknown> | null;
+        adBox1Enabled?: boolean;
+        adBox2Enabled?: boolean;
+      }
     >({
-      query: (body) => ({ url: "/admin/settings/website", method: "POST", body }),
+      query: (body) => {
+        const onlyBoxes =
+          (body.adBox1Enabled !== undefined || body.adBox2Enabled !== undefined) &&
+          body.name === undefined &&
+          body.email === undefined &&
+          body.mobile === undefined &&
+          body.address === undefined &&
+          body.logo === undefined;
+        return {
+          url: onlyBoxes ? "/admin/settings/ad-boxes" : "/admin/settings/website",
+          method: "POST",
+          body,
+        };
+      },
       invalidatesTags: ["Settings"],
     }),
     issueCertificate: build.mutation<
@@ -175,6 +216,8 @@ export const api = createApi({
 export const {
   useLoginMutation,
   useLogoutMutation,
+  useGetMeQuery,
+  useUpdateAccountMutation,
   useDashboardQuery,
   useListQuery,
   useGetByIdQuery,

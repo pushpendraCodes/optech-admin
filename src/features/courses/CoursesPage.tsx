@@ -366,7 +366,7 @@ export function CoursesPage() {
                     <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-white/8 px-2 py-2 text-sm hover:bg-white/5">
                       <input
                         type="checkbox"
-                        className="mt-1 accent-[#d4a22f]"
+                        className="mt-1 accent-accent"
                         checked={checked}
                         onChange={() => {
                           setFacultyIds((prev) =>

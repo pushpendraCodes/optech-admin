@@ -205,7 +205,7 @@ export function StaffPage() {
             <Input type="number" {...form.register("sortOrder")} />
           </Field>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" {...form.register("published")} className="accent-[#d4a22f]" />
+            <input type="checkbox" {...form.register("published")} className="accent-accent" />
             Published on website
           </label>
 

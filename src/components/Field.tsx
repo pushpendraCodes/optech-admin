@@ -2,7 +2,7 @@ import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes 
 import clsx from "clsx";
 
 const field =
-  "w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 font-sans text-sm text-foreground outline-none focus:border-accent/50 [color-scheme:dark]";
+  "field-control w-full rounded-xl border bg-surface/80 px-3 py-2.5 font-sans text-sm text-foreground outline-none [color-scheme:dark]";
 
 export function Field({
   label,

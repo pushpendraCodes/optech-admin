@@ -6,7 +6,8 @@ import { PageHeader, EmptyState, Skeleton, StatusBadge } from "@/components/Chro
 import { Button } from "@/components/Button";
 import { Field, Input, Textarea } from "@/components/Field";
 import { ConfirmDialog, Modal } from "@/components/Modal";
-import { PhotoUploadField, photoUrl, type PhotoAsset } from "@/components/StudentPhoto";
+import { photoUrl, type PhotoAsset } from "@/components/StudentPhoto";
+import { PopupMediaField, isVideoAsset } from "@/features/popups/PopupMediaField";
 import { useCreateMutation, useListQuery, usePatchMutation, useRemoveMutation } from "@/app/api";
 import { toast } from "@/components/Toast";
 import { useCan } from "@/hooks/useAuth";
@@ -23,6 +24,15 @@ const schema = z.object({
 
 type Form = z.infer<typeof schema>;
 
+function rowMedia(row: Record<string, unknown> | null): PhotoAsset[] {
+  if (!row) return [];
+  const list = Array.isArray(row.media) ? (row.media as PhotoAsset[]) : [];
+  const filtered = list.filter((item) => Boolean(photoUrl(item)));
+  if (filtered.length) return filtered;
+  const legacy = row.image as PhotoAsset | undefined;
+  return photoUrl(legacy) ? [legacy as PhotoAsset] : [];
+}
+
 export function PopupsPage() {
   const canWrite = useCan("cms:write");
   const [search, setSearch] = useState("");
@@ -31,7 +41,7 @@ export function PopupsPage() {
   const [open, setOpen] = useState(false);
   const [editRow, setEditRow] = useState<Record<string, unknown> | null>(null);
   const [removeId, setRemoveId] = useState<string | null>(null);
-  const [image, setImage] = useState<PhotoAsset | null>(null);
+  const [media, setMedia] = useState<PhotoAsset[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
   const { data, isLoading, isError, refetch } = useListQuery({
@@ -54,7 +64,7 @@ export function PopupsPage() {
 
   function openCreate() {
     setEditRow(null);
-    setImage(null);
+    setMedia([]);
     setFormError(null);
     form.reset({ title: "", body: "", href: "", cta: "Learn more", active: true, sortOrder: 0 });
     setOpen(true);
@@ -62,7 +72,7 @@ export function PopupsPage() {
 
   function openEdit(row: Record<string, unknown>) {
     setEditRow(row);
-    setImage((row.image as PhotoAsset | undefined) ?? null);
+    setMedia(rowMedia(row));
     setFormError(null);
     form.reset({
       title: String(row.title ?? ""),
@@ -77,13 +87,13 @@ export function PopupsPage() {
 
   useEffect(() => {
     if (!open) return;
-    if (!editRow) setImage(null);
+    if (!editRow) setMedia([]);
   }, [open, editRow]);
 
   async function save(values: Form) {
     setFormError(null);
-    if (!image?.url && !photoUrl(editRow?.image)) {
-      setFormError("Upload a popup media image.");
+    if (!media.length) {
+      setFormError("Upload at least one popup image or video.");
       return;
     }
     const body = {
@@ -93,7 +103,8 @@ export function PopupsPage() {
       body: values.body?.trim() || undefined,
       href: values.href?.trim() || undefined,
       cta: values.cta?.trim() || "Learn more",
-      image: image ?? editRow?.image,
+      media,
+      image: media[0],
       active: values.active !== false,
       sortOrder: values.sortOrder ?? 0,
     };
@@ -127,7 +138,7 @@ export function PopupsPage() {
     <div>
       <PageHeader
         title="Popups"
-        description="Main homepage popup. Only one can be active at a time — activating one turns the others off."
+        description="Main homepage popup. Upload multiple images/videos (max 100 MB each). The website auto-scrolls through them. Only one popup can be active at a time."
         actions={canWrite ? <Button type="button" onClick={openCreate}>New popup</Button> : null}
       />
 
@@ -155,7 +166,7 @@ export function PopupsPage() {
       ) : isError ? (
         <EmptyState title="Could not load popups" body="Retry after the API is up." action={<Button onClick={() => refetch()}>Retry</Button>} />
       ) : rows.length === 0 ? (
-        <EmptyState title="No popups" body="Create a main popup with media." />
+        <EmptyState title="No popups" body="Create a main popup with images or videos." />
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full min-w-[860px] text-sm">
@@ -170,15 +181,35 @@ export function PopupsPage() {
             </thead>
             <tbody>
               {rows.map((row) => {
-                const url = photoUrl(row.image);
+                const items = rowMedia(row);
+                const first = items[0];
+                const url = photoUrl(first);
+                const video = isVideoAsset(first);
                 const isActive = row.active !== false;
                 return (
                   <tr key={String(row._id)} className="border-b border-white/5">
                     <td className="px-4 py-3">
                       {url ? (
-                        <img src={url} alt="" className="h-12 w-20 rounded border border-white/10 object-cover" />
+                        <div className="flex items-center gap-2">
+                          {video ? (
+                            <video
+                              src={url}
+                              muted
+                              playsInline
+                              preload="metadata"
+                              className="h-12 w-20 rounded border border-white/10 object-cover"
+                            />
+                          ) : (
+                            <img src={url} alt="" className="h-12 w-20 rounded border border-white/10 object-cover" />
+                          )}
+                          {items.length > 1 ? (
+                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                              +{items.length - 1}
+                            </span>
+                          ) : null}
+                        </div>
                       ) : (
-                        <span className="text-xs text-zinc-500">No image</span>
+                        <span className="text-xs text-zinc-500">No media</span>
                       )}
                     </td>
                     <td className="px-4 py-3 font-medium">{String(row.title)}</td>
@@ -227,16 +258,7 @@ export function PopupsPage() {
         >
           {formError ? <p className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">{formError}</p> : null}
 
-          <PhotoUploadField
-            label="Popup media"
-            value={image}
-            onChange={setImage}
-            folder="optech/popups"
-            sizeGuide="960 × 720 px (landscape 4:3)"
-            previewAspect="4 / 3"
-            hint="Main popup left panel is about 560×420 on desktop. Upload 960×720 so the full image fits without cropping. Keep text/logos away from the bottom edge (title overlay)."
-            buttonLabel="popup media"
-          />
+          <PopupMediaField value={media} onChange={setMedia} />
 
           <Field label="Title" error={form.formState.errors.title?.message}>
             <Input {...form.register("title")} />
@@ -254,7 +276,7 @@ export function PopupsPage() {
             <Input type="number" {...form.register("sortOrder")} />
           </Field>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" {...form.register("active")} className="accent-[#d4a22f]" />
+            <input type="checkbox" {...form.register("active")} className="accent-accent" />
             Active (turns off all other main popups)
           </label>
 

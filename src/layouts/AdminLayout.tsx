@@ -6,6 +6,7 @@ import { clearAuth } from "@/features/auth/authSlice";
 import { useListQuery, useLogoutMutation, useGetAdminAlertsQuery, useGetAdminAlertUnreadCountQuery, useMarkAdminAlertReadMutation } from "@/app/api";
 import { AuthSessionWatcher } from "@/components/AuthSessionWatcher";
 import { AdminPushSetup } from "@/components/AdminPushSetup";
+import { BrandLogo } from "@/components/BrandLogo";
 import { Drawer } from "@/components/Drawer";
 import { ADMIN_NAV } from "@/constants/nav";
 import { useLivePush } from "@/hooks/useLivePush";
@@ -44,7 +45,9 @@ function NavMenu({ collapsed, onNavigate }: { collapsed: boolean; onNavigate: ()
                     onClick={onNavigate}
                     className={({ isActive }) =>
                       `flex items-center gap-2 rounded-xl px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] ${
-                        isActive ? "bg-accent/15 text-accent" : "text-zinc-400 hover:bg-white/5 hover:text-foreground"
+                        isActive
+                          ? "bg-accent/15 text-accent ring-1 ring-accent/25"
+                          : "text-zinc-400 hover:bg-white/5 hover:text-foreground"
                       } ${collapsed ? "justify-center px-2" : ""}`
                     }
                   >
@@ -91,21 +94,25 @@ export function AdminLayout() {
   useLiveAlertPolling(Boolean(user), serverUnread, alerts, refetchAlerts);
 
   return (
-    <div className="h-dvh max-h-dvh overflow-hidden bg-background">
+    <div className="admin-shell h-dvh max-h-dvh overflow-hidden">
       <AuthSessionWatcher />
       <AdminPushSetup active={Boolean(user)} />
       <div className="flex h-full min-h-0">
         <aside
-          className={`fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh flex-col border-r border-white/8 bg-black/70 backdrop-blur-xl transition-all lg:static lg:translate-x-0 ${
+          className={`admin-sidebar fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh flex-col border-r border-white/8 backdrop-blur-xl transition-all lg:static lg:translate-x-0 ${
             open ? "translate-x-0" : "-translate-x-full"
           } ${collapsed ? "lg:w-[76px]" : "w-64"}`}
         >
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/8 p-4">
-            {!collapsed ? (
-              <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-accent">Optech / Console</p>
-            ) : (
-              <p className="font-mono text-[10px] text-accent">OP</p>
-            )}
+            <div className={`flex min-w-0 items-center ${collapsed ? "justify-center" : "gap-2.5"}`}>
+              <BrandLogo height={34} collapsed={collapsed} />
+              {!collapsed ? (
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-accent">Optech</p>
+                  <p className="truncate font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500">Admin console</p>
+                </div>
+              ) : null}
+            </div>
             <button type="button" className="lg:hidden" onClick={() => setOpen(false)} aria-label="Close menu">
               <X size={16} />
             </button>
@@ -115,8 +122,8 @@ export function AdminLayout() {
           </div>
         </aside>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <header className="z-30 flex shrink-0 items-center justify-between gap-3 border-b border-white/8 bg-black/50 px-4 py-3 backdrop-blur-xl">
+        <div className="admin-shell flex min-h-0 min-w-0 flex-1 flex-col">
+          <header className="admin-header-bar z-30 flex shrink-0 items-center justify-between gap-3 border-b border-white/8 px-4 py-3 backdrop-blur-xl">
             <div className="flex items-center gap-3">
               <button type="button" className="rounded-full border border-white/10 p-2 lg:hidden" onClick={() => setOpen(true)}>
                 <Menu size={16} />
@@ -129,7 +136,12 @@ export function AdminLayout() {
               >
                 {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
               </button>
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">Admin / {crumb}</p>
+              <div className="flex items-center gap-2.5 lg:hidden">
+                <BrandLogo height={28} />
+              </div>
+              <p className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 sm:inline">
+                Admin / {crumb}
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -140,7 +152,7 @@ export function AdminLayout() {
               >
                 <Bell size={16} />
                 {unreadAlerts > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 font-mono text-[9px] text-black animate-pulse">
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 font-mono text-[9px] text-white animate-pulse">
                     {unreadAlerts > 99 ? "99+" : unreadAlerts}
                   </span>
                 ) : null}
@@ -164,7 +176,8 @@ export function AdminLayout() {
               </button>
             </div>
           </header>
-          <main className="mx-auto min-h-0 w-full max-w-[1400px] flex-1 overflow-y-auto overscroll-contain px-4 py-6 md:px-8 [scrollbar-gutter:stable]">
+          <div aria-hidden className="brand-gradient h-0.5 w-full shrink-0 opacity-90" />
+          <main className="admin-main mx-auto min-h-0 w-full max-w-[1400px] flex-1 overflow-y-auto overscroll-contain px-4 py-6 md:px-8 [scrollbar-gutter:stable]">
             <Outlet />
           </main>
         </div>

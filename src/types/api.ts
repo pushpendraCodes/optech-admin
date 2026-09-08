@@ -13,6 +13,7 @@ export type ApiSuccess<T> = {
 export type AuthUser = {
   id: string;
   name: string;
+  email?: string;
   kind: "staff" | "student";
   roles: string[];
 };

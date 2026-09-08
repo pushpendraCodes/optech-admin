@@ -269,7 +269,7 @@ export function NotesPage() {
           )}
 
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" {...form.register("published")} className="accent-[#d4a22f]" />
+            <input type="checkbox" {...form.register("published")} className="accent-accent" />
             Published (visible to enrolled students)
           </label>
 

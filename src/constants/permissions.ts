@@ -50,7 +50,7 @@ export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
   { label: "Admissions", keys: ["admission:read", "admission:write"] },
   { label: "Attendance", keys: ["attendance:read", "attendance:write"] },
   { label: "Fees & referrals", keys: ["payment:read", "payment:write"] },
-  { label: "Quizzes & typing", keys: ["quiz:read", "quiz:write"] },
+  { label: "Quizzes, exams & typing", keys: ["quiz:read", "quiz:write"] },
   { label: "Scholarship exams", keys: ["scholarship:write"] },
   { label: "Notes", keys: ["notes:write"] },
   { label: "Gallery", keys: ["gallery:write"] },

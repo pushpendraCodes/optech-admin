@@ -20,6 +20,7 @@ const AdmissionsDesk = lazy(() => import("@/features/admissions/AdmissionsDesk")
 const AttendanceDesk = lazy(() => import("@/features/attendance/AttendanceDesk").then((m) => ({ default: m.AttendanceDesk })));
 const FeesPage = lazy(() => import("@/features/payments/FeesPage").then((m) => ({ default: m.FeesPage })));
 const QuizzesPage = lazy(() => import("@/features/quizzes/QuizzesPage").then((m) => ({ default: m.QuizzesPage })));
+const ExamsPage = lazy(() => import("@/features/exams/ExamsPage").then((m) => ({ default: m.ExamsPage })));
 const ScholarshipsPage = lazy(() => import("@/features/scholarships/ScholarshipsPage").then((m) => ({ default: m.ScholarshipsPage })));
 const LivePage = lazy(() => import("@/features/live/LivePage").then((m) => ({ default: m.LivePage })));
 const RolesPage = lazy(() => import("@/features/roles/RolesPage").then((m) => ({ default: m.RolesPage })));
@@ -27,6 +28,7 @@ const SettingsPage = lazy(() => import("@/features/settings/SettingsPage").then(
 const NotificationsPage = lazy(() => import("@/features/notifications/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
 const IdCardsPage = lazy(() => import("@/features/idCards/IdCardsPage").then((m) => ({ default: m.IdCardsPage })));
 const EnrollmentsPage = lazy(() => import("@/features/enrollments/EnrollmentsPage").then((m) => ({ default: m.EnrollmentsPage })));
+const ExternalDataPage = lazy(() => import("@/features/external/ExternalDataPage").then((m) => ({ default: m.ExternalDataPage })));
 const EnquiriesPage = lazy(() => import("@/features/enquiries/EnquiriesPage").then((m) => ({ default: m.EnquiriesPage })));
 const TypingPage = lazy(() => import("@/features/pages").then((m) => ({ default: m.TypingPage })));
 const NotesPage = lazy(() => import("@/features/pages").then((m) => ({ default: m.NotesPage })));
@@ -98,9 +100,11 @@ function AppRoutes() {
         <Route path="/admissions" element={<RoutePage permission={ROUTE_PERMISSIONS["/admissions"]}><AdmissionsDesk /></RoutePage>} />
         <Route path="/enquiries" element={<RoutePage permission={ROUTE_PERMISSIONS["/enquiries"]}><EnquiriesPage /></RoutePage>} />
         <Route path="/enrollments" element={<RoutePage permission={ROUTE_PERMISSIONS["/enrollments"]}><EnrollmentsPage /></RoutePage>} />
+        <Route path="/external-data" element={<RoutePage permission={ROUTE_PERMISSIONS["/external-data"]}><ExternalDataPage /></RoutePage>} />
         <Route path="/attendance" element={<RoutePage permission={ROUTE_PERMISSIONS["/attendance"]}><AttendanceDesk /></RoutePage>} />
         <Route path="/fees" element={<RoutePage permission={ROUTE_PERMISSIONS["/fees"]}><FeesPage /></RoutePage>} />
         <Route path="/quizzes" element={<RoutePage permission={ROUTE_PERMISSIONS["/quizzes"]}><QuizzesPage /></RoutePage>} />
+        <Route path="/exams" element={<RoutePage permission={ROUTE_PERMISSIONS["/exams"]}><ExamsPage /></RoutePage>} />
         <Route path="/typing" element={<RoutePage permission={ROUTE_PERMISSIONS["/typing"]}><TypingPage /></RoutePage>} />
         <Route path="/scholarships" element={<RoutePage permission={ROUTE_PERMISSIONS["/scholarships"]}><ScholarshipsPage /></RoutePage>} />
         <Route path="/notes" element={<RoutePage permission={ROUTE_PERMISSIONS["/notes"]}><NotesPage /></RoutePage>} />

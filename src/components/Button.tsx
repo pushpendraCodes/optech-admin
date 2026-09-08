@@ -3,7 +3,7 @@ import clsx from "clsx";
 
 const variants = {
   primary:
-    "border-accent/40 bg-accent/15 text-accent hover:bg-accent/25",
+    "border-transparent text-white shadow-[0_0_24px_rgba(26,92,255,0.25)] [background-image:linear-gradient(90deg,#ff1f3d,#8b2cff,#1a5cff)] hover:brightness-110",
   ghost: "border-white/12 bg-white/5 text-foreground hover:bg-white/10",
   danger: "border-danger/40 bg-danger/10 text-danger hover:bg-danger/20",
 };

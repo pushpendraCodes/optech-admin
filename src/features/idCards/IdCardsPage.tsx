@@ -2,17 +2,49 @@ import { useState } from "react";
 import { PageHeader, EmptyState, Skeleton } from "@/components/Chrome";
 import { Button } from "@/components/Button";
 import { Field, Input } from "@/components/Field";
-import { useListQuery, useDownloadIdCardPdfMutation } from "@/app/api";
+import { useListQuery, useDownloadIdCardPdfMutation, useWebsiteSettingsQuery } from "@/app/api";
 import { toast } from "@/components/Toast";
 import { downloadBlob } from "@/utils/downloadBlob";
 import { photoUrl } from "@/components/StudentPhoto";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
+function BrandHeader({
+  logoSrc,
+  instituteName,
+}: {
+  logoSrc?: string;
+  instituteName: string;
+}) {
+  const parts = instituteName.trim().split(/\s+/);
+  const main = (parts[0] || "Optech").toUpperCase();
+  const sub = parts.slice(1).join(" ").toUpperCase() || "COMPUTER INSTITUTE";
+
+  return (
+    <div className="flex items-center gap-3 bg-[#6b4423] px-4 py-3">
+      {logoSrc ? (
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1">
+          <img src={logoSrc} alt="" className="h-full w-full object-contain" />
+        </div>
+      ) : (
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#d4a22f]/60 bg-[#3d2818] font-mono text-[10px] text-[#d4a22f]">
+          {main.slice(0, 2)}
+        </div>
+      )}
+      <div className="min-w-0">
+        <p className="truncate font-sans text-sm font-bold uppercase tracking-wide text-white">{main}</p>
+        <p className="truncate font-mono text-[9px] uppercase tracking-[0.16em] text-white/80">{sub}</p>
+      </div>
+    </div>
+  );
+}
+
 export function IdCardsPage() {
-  const [downloadIdCard] = useDownloadIdCardPdfMutation();
+  const [downloadIdCard, downloadState] = useDownloadIdCardPdfMutation();
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const debounced = useDebouncedValue(search);
+  const settings = useWebsiteSettingsQuery();
   const { data, isLoading, isError, refetch } = useListQuery({
     resource: "students",
     page,
@@ -22,13 +54,26 @@ export function IdCardsPage() {
   const rows = data?.data ?? [];
   const meta = data?.meta;
 
+  const site = (settings.data?.data ?? {}) as {
+    name?: string;
+    logo?: { url?: string } | string | null;
+  };
+  const instituteName = String(site.name || "Optech Computer Institute");
+  const logoSrc = photoUrl(site.logo);
+
   async function download(id: string, code: string) {
+    setBusyId(id);
     try {
       const blob = await downloadIdCard(id).unwrap();
+      if (!blob || blob.size === 0 || blob.type.includes("json")) {
+        throw new Error("Invalid PDF response");
+      }
       downloadBlob(blob, `${code}-id.pdf`);
       toast("ID card downloaded");
     } catch {
       toast("Download failed", "error");
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -64,22 +109,16 @@ export function IdCardsPage() {
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {rows.map((row) => {
+            const id = String(row._id);
             const user = row.user as { name?: string; phone?: string; email?: string } | undefined;
             const img = photoUrl(row.photo);
+            const downloading = busyId === id && downloadState.isLoading;
             return (
               <article
-                key={String(row._id)}
+                key={id}
                 className="overflow-hidden rounded-2xl border border-[#5c4033]/40 bg-[#faf0e6] shadow-[0_12px_40px_-20px_rgba(0,0,0,0.55)]"
               >
-                <div className="flex items-center gap-3 bg-[#6b4423] px-4 py-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#d4a22f]/60 bg-[#3d2818] font-mono text-[10px] text-[#d4a22f]">
-                    OP
-                  </div>
-                  <div>
-                    <p className="font-sans text-sm font-bold uppercase tracking-wide text-white">Optech</p>
-                    <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-white/80">Computer Institute</p>
-                  </div>
-                </div>
+                <BrandHeader logoSrc={logoSrc || undefined} instituteName={instituteName} />
                 <div className="px-4 pb-4 pt-5">
                   <div className="mx-auto mb-4 aspect-[5/6] w-28 overflow-hidden rounded border border-[#6b4423]/30 bg-[#e8d5c4]">
                     {img ? (
@@ -108,8 +147,13 @@ export function IdCardsPage() {
                       <dd className="text-xs leading-snug">{String(row.address ?? "—")}</dd>
                     </div>
                   </dl>
-                  <Button className="mt-4 w-full" variant="ghost" onClick={() => download(String(row._id), String(row.studentCode))}>
-                    Download PDF
+                  <Button
+                    type="button"
+                    className="mt-4 w-full"
+                    disabled={Boolean(busyId)}
+                    onClick={() => void download(id, String(row.studentCode))}
+                  >
+                    {downloading ? "Downloading…" : "Download ID card"}
                   </Button>
                 </div>
                 <div className="h-2.5 bg-[#6b4423]" />

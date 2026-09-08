@@ -4,7 +4,7 @@ import { useDashboardQuery, useListQuery } from "@/app/api";
 import { Button } from "@/components/Button";
 import { rupees } from "@/utils/format";
 
-const PIE = ["#d4a22f", "#71717a", "#34d399", "#ef4444", "#fbbf24"];
+const PIE = ["#ff1f3d", "#8b2cff", "#1a5cff", "#34d399", "#fbbf24"];
 
 export function DashboardPage() {
   const { data, isLoading, isError, refetch } = useDashboardQuery();
@@ -67,7 +67,7 @@ export function DashboardPage() {
                 <XAxis dataKey="name" stroke="#71717a" fontSize={11} />
                 <YAxis stroke="#71717a" fontSize={11} />
                 <Tooltip contentStyle={{ background: "#121214", border: "1px solid #333" }} />
-                <Bar dataKey="value" fill="#d4a22f" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="value" fill="#5b8cff" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

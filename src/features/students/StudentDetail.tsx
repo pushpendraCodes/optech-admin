@@ -117,12 +117,13 @@ export function StudentDetail() {
                 try {
                   const blob = await downloadIdCard(id).unwrap();
                   downloadBlob(blob, `${String(student.studentCode)}-id.pdf`);
+                  toast("ID card downloaded");
                 } catch {
                   toast("ID card download failed", "error");
                 }
               }}
             >
-              Download ID
+              Download ID card
             </Button>
           </div>
         }
