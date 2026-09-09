@@ -174,7 +174,7 @@ function CmsKind(kind: string, title: string, description: string) {
 export const MarqueePage = CmsKind("marquee", "Marquee", "Homepage ticker items with optional link.");
 export { AdsPage } from "@/features/ads/AdsPage";
 export { PopupsPage } from "@/features/popups/PopupsPage";
-export const LinksPage = CmsKind("link", "Useful links", "Public resource links.");
+export { LinksPage } from "@/features/links/LinksPage";
 
 export function AuditPage() {
   return (
