@@ -64,7 +64,9 @@ export function StudentAttendanceSection({
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="font-sans text-lg font-semibold">Attendance calendar</h2>
-          <p className="mt-1 text-sm text-zinc-500">Filter by month, year, and course.</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Login and logout selfies from live class. Photos older than 30 days are removed. Click a photo to enlarge.
+          </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="block">

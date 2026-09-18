@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { loc } from "@/utils/format";
+import { photoUrl } from "@/components/StudentPhoto";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -41,6 +42,24 @@ function courseName(course: unknown) {
   return "Course";
 }
 
+function timeLabel(value: unknown) {
+  if (!value) return "";
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+}
+
+function entryPhotos(entry: Record<string, unknown>) {
+  const login = photoUrl(entry.loginPhoto);
+  const logout = photoUrl(entry.logoutPhoto);
+  return {
+    login,
+    logout,
+    loginAt: timeLabel(entry.loginAt),
+    logoutAt: timeLabel(entry.logoutAt),
+  };
+}
+
 export function AttendanceCalendar({
   year,
   month,
@@ -54,6 +73,15 @@ export function AttendanceCalendar({
   selectedDate?: string;
   onDayClick?: (dateKey: string) => void;
 }) {
+  const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
+
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPreview(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
+
   const byDay = useMemo(() => {
     const map = new Map<string, Record<string, unknown>[]>();
     for (const row of rows) {
@@ -102,11 +130,12 @@ export function AttendanceCalendar({
         ))}
         {cells.map((cell, index) =>
           cell.day == null ? (
-            <div key={`empty-${index}`} className="min-h-14 rounded-xl border border-transparent" />
+            <div key={`empty-${index}`} className="min-h-16 rounded-xl border border-transparent" />
           ) : (
-            <button
+            <div
               key={cell.key}
-              type="button"
+              role={onDayClick ? "button" : undefined}
+              tabIndex={onDayClick ? 0 : undefined}
               title={
                 cell.entries?.length
                   ? cell.entries
@@ -115,24 +144,88 @@ export function AttendanceCalendar({
                   : "No attendance"
               }
               onClick={() => cell.key && onDayClick?.(cell.key)}
-              className={`min-h-14 rounded-xl border p-2 text-left transition hover:ring-1 hover:ring-accent/40 ${
+              onKeyDown={(e) => {
+                if (!onDayClick || !cell.key) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onDayClick(cell.key);
+                }
+              }}
+              className={`min-h-16 rounded-xl border p-2 text-left transition hover:ring-1 hover:ring-accent/40 ${
                 cell.status ? tone[cell.status] : "border-white/10 bg-white/5 text-zinc-500"
-              } ${selectedDate === cell.key ? "ring-2 ring-accent" : ""}`}
+              } ${selectedDate === cell.key ? "ring-2 ring-accent" : ""} ${onDayClick ? "cursor-pointer" : ""}`}
             >
               <p className="font-mono text-xs">{cell.day}</p>
               {cell.status ? (
                 <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em]">{cell.status}</p>
               ) : null}
               {cell.entries?.length ? (
-                <p className="mt-1 font-mono text-[9px] text-zinc-400">{cell.entries.length} marked</p>
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {cell.entries.map((entry, entryIndex) => {
+                    const photos = entryPhotos(entry);
+                    if (!photos.login && !photos.logout) return null;
+                    return (
+                      <span key={String(entry._id ?? `${cell.key}-${entryIndex}`)} className="flex gap-1">
+                        {photos.login ? (
+                          <button
+                            type="button"
+                            title={`Login${photos.loginAt ? ` · ${photos.loginAt}` : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreview({ url: photos.login, label: `Login${photos.loginAt ? ` · ${photos.loginAt}` : ""}` });
+                            }}
+                            className="h-8 w-8 overflow-hidden rounded-lg border border-white/20 bg-black/30"
+                          >
+                            <img src={photos.login} alt="Login attendance" className="h-full w-full object-cover" />
+                          </button>
+                        ) : null}
+                        {photos.logout ? (
+                          <button
+                            type="button"
+                            title={`Logout${photos.logoutAt ? ` · ${photos.logoutAt}` : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreview({
+                                url: photos.logout,
+                                label: `Logout${photos.logoutAt ? ` · ${photos.logoutAt}` : ""}`,
+                              });
+                            }}
+                            className="h-8 w-8 overflow-hidden rounded-lg border border-white/20 bg-black/30"
+                          >
+                            <img src={photos.logout} alt="Logout attendance" className="h-full w-full object-cover" />
+                          </button>
+                        ) : null}
+                      </span>
+                    );
+                  })}
+                </div>
               ) : null}
-            </button>
+            </div>
           ),
         )}
       </div>
       <p className="mt-3 text-center font-sans text-sm text-zinc-400">
         {MONTHS[month - 1]} {year}
       </p>
+
+      {preview ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <button type="button" className="absolute inset-0 bg-black/80 backdrop-blur-sm" aria-label="Close photo" onClick={() => setPreview(null)} />
+          <figure className="relative z-10 max-h-[90vh] w-full max-w-3xl">
+            <img src={preview.url} alt={preview.label} className="max-h-[80vh] w-full rounded-2xl object-contain" />
+            <figcaption className="mt-3 text-center font-mono text-xs uppercase tracking-[0.16em] text-zinc-300">
+              {preview.label}
+            </figcaption>
+            <button
+              type="button"
+              onClick={() => setPreview(null)}
+              className="mx-auto mt-3 block rounded-full border border-white/15 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-white"
+            >
+              Close
+            </button>
+          </figure>
+        </div>
+      ) : null}
     </div>
   );
 }

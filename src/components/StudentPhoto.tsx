@@ -45,7 +45,7 @@ export function StudentAvatar({
   const className = `${sizes[size]} shrink-0 rounded-full border border-white/10 object-cover`;
 
   if (url) {
-    return <img src={url} alt={name ?? "Student photo"} className={className} />;
+    return <img src={url} alt={name ?? "Student photo"} className={className} loading="lazy" decoding="async" />;
   }
 
   return (

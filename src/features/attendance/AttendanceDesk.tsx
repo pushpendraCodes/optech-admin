@@ -29,6 +29,7 @@ export function AttendanceDesk() {
   const { years, months } = monthYearOptions();
   const [courseId, setCourseId] = useState("");
   const [batchId, setBatchId] = useState("");
+  const [studentId, setStudentId] = useState("");
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [date, setDate] = useState(now.toISOString().slice(0, 10));
@@ -39,7 +40,7 @@ export function AttendanceDesk() {
   const courses = useListQuery({ resource: "courses", page: 1 });
   const batches = useListQuery({ resource: "batches", page: 1, extra: { course: courseId } });
   const students = useListQuery(
-    { resource: "students", page: 1, extra: { course: courseId, batch: batchId } },
+    { resource: "students", page: 1, limit: 100, extra: { course: courseId, batch: batchId, lite: "1" } },
     { skip: !batchId },
   );
   const monthKey = `${year}-${String(month).padStart(2, "0")}`;
@@ -47,7 +48,7 @@ export function AttendanceDesk() {
     {
       resource: "attendance",
       page: 1,
-      extra: { batchId, courseId, month: monthKey },
+      extra: { batchId, courseId, month: monthKey, studentId },
     },
     { skip: !batchId },
   );
@@ -66,13 +67,18 @@ export function AttendanceDesk() {
   const batchList = batches.data?.data ?? [];
   const selectedBatch = batchList.find((b) => String(b._id) === batchId);
   const courseIdResolved = courseId || String(selectedBatch?.course ?? "");
-  const studentList = students.data?.data ?? [];
-  const calendarData = monthRows.data?.data ?? [];
-  const dayData = dayRows.data?.data ?? [];
+  const studentList = useMemo(() => {
+    const rows = students.data?.data ?? [];
+    return [...rows].sort((a, b) => nameFromStudentRow(a).localeCompare(nameFromStudentRow(b), "en"));
+  }, [students.data?.data]);
+  const selectedStudent = studentList.find((s) => String(s._id) === studentId);
+  const visibleStudents = studentId ? studentList.filter((s) => String(s._id) === studentId) : studentList;
+  const calendarData = monthRows.data?.data;
+  const dayData = dayRows.data?.data;
 
   useEffect(() => {
     const next: Record<string, Mark> = {};
-    for (const row of dayData) {
+    for (const row of dayData ?? []) {
       next[studentRefId(row)] = (row.status as Mark) ?? "present";
     }
     setMarks(next);
@@ -81,12 +87,12 @@ export function AttendanceDesk() {
 
   const counts = useMemo(() => {
     const next = { present: 0, absent: 0, late: 0 };
-    for (const s of studentList) {
+    for (const s of visibleStudents) {
       const v = marks[String(s._id)] ?? "present";
       next[v] += 1;
     }
     return next;
-  }, [studentList, marks]);
+  }, [visibleStudents, marks]);
 
   function toggleStudent(id: string) {
     setSelected((prev) => {
@@ -98,8 +104,8 @@ export function AttendanceDesk() {
   }
 
   function toggleAll() {
-    if (selected.size === studentList.length) setSelected(new Set());
-    else setSelected(new Set(studentList.map((s) => String(s._id))));
+    if (selected.size === visibleStudents.length) setSelected(new Set());
+    else setSelected(new Set(visibleStudents.map((s) => String(s._id))));
   }
 
   function applyToSelected(status: Mark) {
@@ -119,7 +125,7 @@ export function AttendanceDesk() {
       toast("Select course and batch", "error");
       return;
     }
-    const targetIds = ids ?? studentList.map((s) => String(s._id));
+    const targetIds = ids ?? visibleStudents.map((s) => String(s._id));
     if (!targetIds.length) return;
     try {
       await act({
@@ -145,7 +151,7 @@ export function AttendanceDesk() {
 
   const monthStats = useMemo(() => {
     const next = { present: 0, absent: 0, late: 0 };
-    for (const row of calendarData) {
+    for (const row of calendarData ?? []) {
       const status = String(row.status);
       if (status === "present") next.present += 1;
       else if (status === "absent") next.absent += 1;
@@ -156,7 +162,7 @@ export function AttendanceDesk() {
 
   return (
     <div>
-      <PageHeader title="Attendance" description="Filter by course and batch, mark daily attendance, edit any day from the calendar." />
+      <PageHeader title="Attendance" description="Filter by course, batch, and student. The calendar shows the selected student’s attendance." />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <label className="block">
@@ -166,6 +172,7 @@ export function AttendanceDesk() {
             onChange={(e) => {
               setCourseId(e.target.value);
               setBatchId("");
+              setStudentId("");
             }}
           >
             <option value="">All courses</option>
@@ -178,11 +185,29 @@ export function AttendanceDesk() {
         </label>
         <label className="block">
           <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">Batch</span>
-          <Select value={batchId} onChange={(e) => setBatchId(e.target.value)}>
+          <Select
+            value={batchId}
+            onChange={(e) => {
+              setBatchId(e.target.value);
+              setStudentId("");
+            }}
+          >
             <option value="">Select batch</option>
             {batchList.map((b) => (
               <option key={String(b._id)} value={String(b._id)}>
                 {String(b.label ?? b._id)}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">Student</span>
+          <Select value={studentId} onChange={(e) => setStudentId(e.target.value)} disabled={!batchId}>
+            <option value="">{batchId ? "All students" : "Select a batch first"}</option>
+            {studentList.map((s) => (
+              <option key={String(s._id)} value={String(s._id)}>
+                {nameFromStudentRow(s)}
+                {s.studentCode ? ` · ${String(s.studentCode)}` : ""}
               </option>
             ))}
           </Select>
@@ -207,7 +232,7 @@ export function AttendanceDesk() {
             ))}
           </Select>
         </label>
-        <label className="block sm:col-span-2">
+        <label className="block">
           <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">Date</span>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
@@ -226,14 +251,18 @@ export function AttendanceDesk() {
 
           <article className="card mb-6 p-5">
             <h2 className="mb-3 font-sans text-lg font-semibold">Calendar</h2>
-            <p className="mb-4 text-sm text-zinc-500">Click a day to mark or edit attendance for that date.</p>
-            {monthRows.isLoading ? (
+            <p className="mb-4 text-sm text-zinc-500">
+              {selectedStudent
+                ? `Showing attendance for ${nameFromStudentRow(selectedStudent)}${selectedStudent.studentCode ? ` · ${String(selectedStudent.studentCode)}` : ""}. Click a day to mark or edit that date.`
+                : "All students in this batch. Pick a student in the filter to see only that student’s calendar."}
+            </p>
+            {monthRows.isLoading || (batchId && students.isLoading) ? (
               <Skeleton className="h-72" />
             ) : (
               <AttendanceCalendar
                 year={year}
                 month={month}
-                rows={calendarData}
+                rows={calendarData ?? []}
                 selectedDate={date}
                 onDayClick={(day) => setDate(day)}
               />
@@ -275,7 +304,7 @@ export function AttendanceDesk() {
 
             {students.isLoading ? (
               <Skeleton className="h-48" />
-            ) : studentList.length === 0 ? (
+            ) : visibleStudents.length === 0 ? (
               <EmptyState title="No students" body="No students found for this course/batch filter." />
             ) : (
               <div className="card divide-y divide-white/5 border border-white/8">
@@ -283,16 +312,16 @@ export function AttendanceDesk() {
                   <label className="flex items-center gap-3 px-4 py-3 text-sm text-zinc-400">
                     <input
                       type="checkbox"
-                      checked={selected.size === studentList.length && studentList.length > 0}
+                      checked={selected.size === visibleStudents.length && visibleStudents.length > 0}
                       onChange={toggleAll}
                       className="rounded border-white/20"
                     />
-                    Select all ({studentList.length})
+                    Select all ({visibleStudents.length})
                   </label>
                 ) : null}
-                {studentList.map((s) => {
+                {visibleStudents.map((s) => {
                   const id = String(s._id);
-                  const existing = dayData.find((row) => studentRefId(row) === id);
+                  const existing = (dayData ?? []).find((row) => studentRefId(row) === id);
                   return (
                     <div key={id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                       <div className="flex min-w-0 items-center gap-3">

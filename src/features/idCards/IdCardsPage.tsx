@@ -50,6 +50,7 @@ export function IdCardsPage() {
     page,
     search: debounced,
     limit: 12,
+    extra: { lite: "1" },
   });
   const rows = data?.data ?? [];
   const meta = data?.meta;

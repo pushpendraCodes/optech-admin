@@ -64,6 +64,7 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
 export const api = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
+  refetchOnFocus: false,
   tagTypes: ["List", "Dashboard", "Auth", "Student", "Settings"],
   endpoints: (build) => ({
     login: build.mutation<ApiSuccess<AuthPayload>, { email: string; password: string; pushToken?: string }>({

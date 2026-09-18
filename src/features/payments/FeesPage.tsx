@@ -75,7 +75,7 @@ export function FeesPage() {
     extra: { status, studentId: studentFilter, courseId: courseFilter, mode: modeFilter },
   });
   const dues = useListQuery({ resource: "installments", page: 1, extra: { status: "due" } });
-  const students = useListQuery({ resource: "students", page: 1 });
+  const students = useListQuery({ resource: "students", page: 1, limit: 100, extra: { lite: "1" } });
   const courses = useListQuery({ resource: "courses", page: 1 });
   const [create, createState] = useCreateMutation();
   const form = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { mode: "cash" } });
@@ -88,7 +88,8 @@ export function FeesPage() {
     { skip: !selectedStudent },
   );
   const pendingInstallments = useMemo(() => {
-    const rows = studentInstallments.data?.data ?? [];
+    const rows = studentInstallments.data?.data;
+    if (!rows?.length) return [] as Record<string, unknown>[];
     return rows
       .filter((r) => r.status === "due" || r.status === "overdue")
       .sort((a, b) => new Date(String(a.dueDate)).getTime() - new Date(String(b.dueDate)).getTime());
@@ -96,24 +97,18 @@ export function FeesPage() {
   const selectedInstallmentRow = pendingInstallments.find((row) => String(row._id) === selectedInstallment);
 
   useEffect(() => {
-    if (!selectedStudent) {
-      setValue("installment", "");
-      return;
-    }
+    if (!open || !selectedStudent) return;
     const next = pendingInstallments[0];
-    if (next) {
-      setValue("installment", String(next._id));
-      setValue("amount", Number(next.amount ?? 0));
-    } else {
-      setValue("installment", "");
-    }
-  }, [selectedStudent, pendingInstallments, setValue]);
+    const nextId = next ? String(next._id) : "";
+    if (nextId !== (selectedInstallment || "")) setValue("installment", nextId);
+    if (next) setValue("amount", Number(next.amount ?? 0));
+  }, [open, selectedStudent, pendingInstallments, selectedInstallment, setValue]);
 
   useEffect(() => {
-    if (!selectedInstallment) return;
+    if (!open || !selectedInstallment) return;
     const row = pendingInstallments.find((r) => String(r._id) === selectedInstallment);
     if (row) setValue("amount", Number(row.amount ?? 0));
-  }, [selectedInstallment, pendingInstallments, setValue]);
+  }, [open, selectedInstallment, pendingInstallments, setValue]);
   const rows = data?.data ?? [];
   const meta = data?.meta;
   const revenue = rows.filter((p) => p.status === "paid").reduce((s, p) => s + Number(p.amount ?? 0), 0);

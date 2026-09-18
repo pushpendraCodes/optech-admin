@@ -1,9 +1,15 @@
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, X, Bell } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/hooks/useAuth";
 import { clearAuth } from "@/features/auth/authSlice";
-import { useListQuery, useLogoutMutation, useGetAdminAlertsQuery, useGetAdminAlertUnreadCountQuery, useMarkAdminAlertReadMutation } from "@/app/api";
+import {
+  useListQuery,
+  useLogoutMutation,
+  useGetAdminAlertsQuery,
+  useGetAdminAlertUnreadCountQuery,
+  useMarkAdminAlertReadMutation,
+} from "@/app/api";
 import { AuthSessionWatcher } from "@/components/AuthSessionWatcher";
 import { AdminPushSetup } from "@/components/AdminPushSetup";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -12,6 +18,16 @@ import { ADMIN_NAV } from "@/constants/nav";
 import { useLivePush } from "@/hooks/useLivePush";
 import { useLiveAlertPolling } from "@/hooks/useLiveAlertPolling";
 import { NotificationToast, showLiveToast } from "@/components/NotificationToast";
+
+function usePageVisible() {
+  const [visible, setVisible] = useState(() => typeof document === "undefined" || document.visibilityState === "visible");
+  useEffect(() => {
+    const onVis = () => setVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+  return visible;
+}
 
 function NavMenu({ collapsed, onNavigate }: { collapsed: boolean; onNavigate: () => void }) {
   const { permissions, user } = useAppSelector((s) => s.auth);
@@ -64,9 +80,15 @@ function NavMenu({ collapsed, onNavigate }: { collapsed: boolean; onNavigate: ()
   );
 }
 
-export function AdminLayout() {
-  const [open, setOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+function AdminHeader({
+  collapsed,
+  onToggleCollapsed,
+  onOpenMenu,
+}: {
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  onOpenMenu: () => void;
+}) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [liveUnread, setLiveUnread] = useState(0);
   const user = useAppSelector((s) => s.auth.user);
@@ -74,8 +96,13 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [logout] = useLogoutMutation();
-  const { data: alertsRes, refetch: refetchAlerts } = useGetAdminAlertsQuery(undefined, { pollingInterval: 15000 });
-  const { data: unreadRes, refetch: refetchUnread } = useGetAdminAlertUnreadCountQuery(undefined, { pollingInterval: 10000 });
+  const visible = usePageVisible();
+  const { data: alertsRes, refetch: refetchAlerts } = useGetAdminAlertsQuery(undefined, {
+    pollingInterval: visible ? 60000 : 0,
+  });
+  const { data: unreadRes, refetch: refetchUnread } = useGetAdminAlertUnreadCountQuery(undefined, {
+    pollingInterval: visible ? 45000 : 0,
+  });
   const [markAlertRead] = useMarkAdminAlertReadMutation();
   const alerts = alertsRes?.data ?? [];
   const serverUnread = Number(unreadRes?.data?.count ?? 0);
@@ -83,108 +110,86 @@ export function AdminLayout() {
   const notes = useListQuery({ resource: "notifications", page: 1 }, { skip: !notesOpen });
   const crumb = location.pathname === "/" ? "Dashboard" : location.pathname.replace(/^\//, "").replaceAll("/", " / ");
 
-  const handleLivePush = useCallback((n: { title: string; body: string; link?: string }) => {
-    showLiveToast(n.title, n.body, n.link);
-    setLiveUnread((c) => c + 1);
-    void refetchAlerts();
-    void refetchUnread();
-  }, [refetchAlerts, refetchUnread]);
+  const handleLivePush = useCallback(
+    (n: { title: string; body: string; link?: string }) => {
+      showLiveToast(n.title, n.body, n.link);
+      setLiveUnread((c) => c + 1);
+      void refetchAlerts();
+      void refetchUnread();
+    },
+    [refetchAlerts, refetchUnread],
+  );
 
   useLivePush(Boolean(user), handleLivePush);
   useLiveAlertPolling(Boolean(user), serverUnread, alerts, refetchAlerts);
 
   return (
-    <div className="admin-shell h-dvh max-h-dvh overflow-hidden">
-      <AuthSessionWatcher />
-      <AdminPushSetup active={Boolean(user)} />
-      <div className="flex h-full min-h-0">
-        <aside
-          className={`admin-sidebar fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh flex-col border-r border-white/8 backdrop-blur-xl transition-all lg:static lg:translate-x-0 ${
-            open ? "translate-x-0" : "-translate-x-full"
-          } ${collapsed ? "lg:w-[76px]" : "w-64"}`}
-        >
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/8 p-4">
-            <div className={`flex min-w-0 items-center ${collapsed ? "justify-center" : "gap-2.5"}`}>
-              <BrandLogo height={34} collapsed={collapsed} />
-              {!collapsed ? (
-                <div className="min-w-0">
-                  <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-accent">Optech</p>
-                  <p className="truncate font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500">Admin console</p>
-                </div>
-              ) : null}
-            </div>
-            <button type="button" className="lg:hidden" onClick={() => setOpen(false)} aria-label="Close menu">
-              <X size={16} />
-            </button>
+    <>
+      <header className="admin-header-bar sticky top-0 z-30 flex shrink-0 items-center justify-between gap-3 border-b border-white/8 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <button type="button" className="rounded-full border border-white/10 p-2 lg:hidden" onClick={onOpenMenu}>
+            <Menu size={16} />
+          </button>
+          <button
+            type="button"
+            className="hidden rounded-full border border-white/10 p-2 lg:inline-flex"
+            onClick={onToggleCollapsed}
+            aria-label="Collapse sidebar"
+          >
+            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+          <div className="flex items-center gap-2.5 lg:hidden">
+            <BrandLogo height={28} />
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pt-3 [scrollbar-gutter:stable]">
-            <NavMenu collapsed={collapsed} onNavigate={() => setOpen(false)} />
-          </div>
-        </aside>
-
-        <div className="admin-shell flex min-h-0 min-w-0 flex-1 flex-col">
-          <header className="admin-header-bar z-30 flex shrink-0 items-center justify-between gap-3 border-b border-white/8 px-4 py-3 backdrop-blur-xl">
-            <div className="flex items-center gap-3">
-              <button type="button" className="rounded-full border border-white/10 p-2 lg:hidden" onClick={() => setOpen(true)}>
-                <Menu size={16} />
-              </button>
-              <button
-                type="button"
-                className="hidden rounded-full border border-white/10 p-2 lg:inline-flex"
-                onClick={() => setCollapsed((v) => !v)}
-                aria-label="Collapse sidebar"
-              >
-                {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-              </button>
-              <div className="flex items-center gap-2.5 lg:hidden">
-                <BrandLogo height={28} />
-              </div>
-              <p className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 sm:inline">
-                Admin / {crumb}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="relative rounded-full border border-white/10 p-2 text-zinc-400 transition-colors hover:text-foreground"
-                onClick={() => { setNotesOpen(true); setLiveUnread(0); }}
-                aria-label={`Notifications${unreadAlerts > 0 ? ` (${unreadAlerts} unread)` : ""}`}
-              >
-                <Bell size={16} />
-                {unreadAlerts > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 font-mono text-[9px] text-white animate-pulse">
-                    {unreadAlerts > 99 ? "99+" : unreadAlerts}
-                  </span>
-                ) : null}
-              </button>
-              <span className="hidden text-sm text-zinc-400 sm:inline">{user?.name}</span>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-400"
-                onClick={async () => {
-                  try {
-                    await logout().unwrap();
-                  } catch {
-                    /* still clear local session */
-                  }
-                  dispatch(clearAuth());
-                  navigate("/login");
-                }}
-              >
-                <LogOut size={14} />
-                Sign out
-              </button>
-            </div>
-          </header>
-          <div aria-hidden className="brand-gradient h-0.5 w-full shrink-0 opacity-90" />
-          <main className="admin-main mx-auto min-h-0 w-full max-w-[1400px] flex-1 overflow-y-auto overscroll-contain px-4 py-6 md:px-8 [scrollbar-gutter:stable]">
-            <Outlet />
-          </main>
+          <p className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 sm:inline">
+            Admin / {crumb}
+          </p>
         </div>
-      </div>
-      {open ? <button type="button" className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setOpen(false)} aria-label="Close overlay" /> : null}
-      <NotificationToast />
-      <Drawer open={notesOpen} title="Alerts & notifications" onClose={() => { setNotesOpen(false); setLiveUnread(0); }}>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="relative rounded-full border border-white/10 p-2 text-zinc-400 transition-colors hover:text-foreground"
+            onClick={() => {
+              setNotesOpen(true);
+              setLiveUnread(0);
+            }}
+            aria-label={`Notifications${unreadAlerts > 0 ? ` (${unreadAlerts} unread)` : ""}`}
+          >
+            <Bell size={16} />
+            {unreadAlerts > 0 ? (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 font-mono text-[9px] text-white">
+                {unreadAlerts > 99 ? "99+" : unreadAlerts}
+              </span>
+            ) : null}
+          </button>
+          <span className="hidden text-sm text-zinc-400 sm:inline">{user?.name}</span>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-400"
+            onClick={async () => {
+              try {
+                await logout().unwrap();
+              } catch {
+                /* still clear local session */
+              }
+              dispatch(clearAuth());
+              navigate("/login");
+            }}
+          >
+            <LogOut size={14} />
+            Sign out
+          </button>
+        </div>
+      </header>
+      <div aria-hidden className="brand-gradient h-0.5 w-full shrink-0 opacity-90" />
+      <Drawer
+        open={notesOpen}
+        title="Alerts & notifications"
+        onClose={() => {
+          setNotesOpen(false);
+          setLiveUnread(0);
+        }}
+      >
         <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">Live alerts</p>
         <ul className="space-y-3 text-sm">
           {alerts.slice(0, 20).map((row) => {
@@ -245,6 +250,76 @@ export function AdminLayout() {
           {(notes.data?.data ?? []).length === 0 ? <li className="text-zinc-500">No broadcasts yet.</li> : null}
         </ul>
       </Drawer>
+    </>
+  );
+}
+
+export function AdminLayout() {
+  const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const user = useAppSelector((s) => s.auth.user);
+
+  return (
+    <div className="admin-shell min-h-dvh">
+      <AuthSessionWatcher />
+      <AdminPushSetup active={Boolean(user)} />
+      <div className="flex min-h-dvh">
+        <aside
+          className={`admin-sidebar admin-scroll sticky top-0 z-40 hidden h-dvh shrink-0 flex-col border-r border-white/8 lg:flex ${
+            collapsed ? "w-[76px]" : "w-64"
+          }`}
+        >
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/8 p-4">
+            <div className={`flex min-w-0 items-center ${collapsed ? "justify-center" : "gap-2.5"}`}>
+              <BrandLogo height={34} collapsed={collapsed} />
+              {!collapsed ? (
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-accent">Optech</p>
+                  <p className="truncate font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500">Admin console</p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <div className="admin-scroll min-h-0 flex-1 overflow-y-auto p-4 pt-3 [scrollbar-gutter:stable]">
+            <NavMenu collapsed={collapsed} onNavigate={() => setOpen(false)} />
+          </div>
+        </aside>
+
+        {open ? (
+          <aside className="admin-sidebar admin-scroll fixed inset-y-0 left-0 z-40 flex h-dvh w-64 flex-col border-r border-white/8 lg:hidden">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/8 p-4">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <BrandLogo height={34} />
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-accent">Optech</p>
+                  <p className="truncate font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500">Admin console</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close menu">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="admin-scroll min-h-0 flex-1 overflow-y-auto p-4 pt-3">
+              <NavMenu collapsed={false} onNavigate={() => setOpen(false)} />
+            </div>
+          </aside>
+        ) : null}
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <AdminHeader
+            collapsed={collapsed}
+            onToggleCollapsed={() => setCollapsed((v) => !v)}
+            onOpenMenu={() => setOpen(true)}
+          />
+          <main className="admin-main mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 md:px-8">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+      {open ? (
+        <button type="button" className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setOpen(false)} aria-label="Close overlay" />
+      ) : null}
+      <NotificationToast />
     </div>
   );
 }
